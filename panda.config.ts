@@ -1,4 +1,8 @@
 import { defineConfig } from '@pandacss/dev';
+import { createPreset } from '@park-ui/panda-preset';
+
+import amber from '@park-ui/panda-preset/colors/amber';
+import sand from '@park-ui/panda-preset/colors/sand';
 
 export default defineConfig({
   // Whether to use css reset
@@ -9,6 +13,8 @@ export default defineConfig({
 
   // Files to exclude
   exclude: [],
+
+  presets: [createPreset({ accentColor: amber, grayColor: sand, radius: 'sm' })],
 
   // Useful for theme customization
   theme: {
