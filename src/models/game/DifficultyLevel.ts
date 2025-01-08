@@ -1,5 +1,3 @@
-export const DifficultyLevelVariants = Object.freeze(['Easy', 'Medium', 'Hard'] as const);
+export const difficultyLevelVariants = Object.freeze(['Easy', 'Medium', 'Hard'] as const);
 
-export type DifficultyLevel = (typeof DifficultyLevelVariants)[number];
-
-export const DifficultyLevelDefaultValue: DifficultyLevel = 'Medium';
+export type DifficultyLevel = (typeof difficultyLevelVariants)[number];

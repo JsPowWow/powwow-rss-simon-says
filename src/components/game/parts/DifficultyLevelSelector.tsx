@@ -1,14 +1,18 @@
 import { RadioButtonGroup } from '@/components/ui/radio-button-group';
-import { DifficultyLevelDefaultValue, DifficultyLevelVariants } from '@/models';
+import { DifficultyLevel, difficultyLevelVariants } from '@/models';
 
-const options = DifficultyLevelVariants.map((option) => ({
+const options = difficultyLevelVariants.map((option) => ({
   value: option,
   label: option,
 }));
 
-export const DifficultyLevelSelector = () => {
+interface DifficultyLevelSelectorProps {
+  currentLevel: DifficultyLevel;
+}
+
+export const DifficultyLevelSelector = ({ currentLevel }: DifficultyLevelSelectorProps) => {
   return (
-    <RadioButtonGroup.Root defaultValue={DifficultyLevelDefaultValue}>
+    <RadioButtonGroup.Root value={currentLevel}>
       {options.map(({ value, label }) => (
         <RadioButtonGroup.Item key={value} value={value} px='0'>
           <RadioButtonGroup.ItemControl />
