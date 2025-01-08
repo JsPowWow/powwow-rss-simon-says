@@ -1,8 +1,8 @@
 import { defineConfig } from '@pandacss/dev';
-import { createPreset } from '@park-ui/panda-preset';
+import { createPreset } from '@/components/ui/panda-preset';
 
-import amber from '@park-ui/panda-preset/colors/amber';
-import sand from '@park-ui/panda-preset/colors/sand';
+import amber from '@/components/ui/panda-preset/colors/amber';
+import sand from '@/components/ui/panda-preset/colors/sand';
 
 export default defineConfig({
   // Whether to use css reset

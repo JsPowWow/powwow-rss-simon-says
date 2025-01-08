@@ -1,27 +1,19 @@
 import { Button } from '@/components/ui/button';
-
-import { HStack } from '@/styled-system/jsx';
-
-import { css } from '@/styled-system/css';
+import { Container, VStack } from '@/styled-system/jsx';
+import { VirtualKeyboard, DifficultyLevelSelector } from '@/components/game/';
 
 export default function Home() {
   return (
-    <main className={css({ fontSize: '2xl', fontWeight: 'bold' })}>
-      <HStack>
-        <Button colorPalette='red' variant='solid'>
-          Button
-        </Button>
-        <Button colorPalette='red' variant='subtle'>
-          Button
-        </Button>
-        <Button colorPalette='red' variant='outline'>
-          Button
-        </Button>
-        <Button colorPalette='red' variant='ghost'>
-          Button
-        </Button>
-      </HStack>
-      Hello 🐼!
+    <main>
+      <Container py={{ base: '12', md: '16' }} maxW='2xl'>
+        <VStack flexWrap='wrap'>
+          <Button variant='solid' size='2xl'>
+            Start
+          </Button>
+          <DifficultyLevelSelector />
+          <VirtualKeyboard />
+        </VStack>
+      </Container>
     </main>
   );
 }
