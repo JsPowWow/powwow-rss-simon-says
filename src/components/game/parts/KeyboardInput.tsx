@@ -1,6 +1,6 @@
-import { Letters, Numbers } from '@/models';
 import { Button } from '@/components/ui/button';
 import { HStack, VStack } from '@/styled-system/jsx';
+import { GameSymbols } from '@/models';
 
 interface KeyboardInputProps {
   showNumbers: boolean;
@@ -13,7 +13,7 @@ export const KeyboardInput = ({ showLetters, showNumbers, disabled = false }: Ke
     <VStack>
       {showNumbers && (
         <HStack flexWrap='wrap' justifyContent='center'>
-          {Numbers.map((key, index) => (
+          {GameSymbols.numbers.map((key, index) => (
             <Button key={index} disabled={disabled}>
               {key}
             </Button>
@@ -22,7 +22,7 @@ export const KeyboardInput = ({ showLetters, showNumbers, disabled = false }: Ke
       )}
       {showLetters && (
         <HStack flexWrap='wrap' justifyContent='center'>
-          {Letters.map((key, index) => (
+          {GameSymbols.letters.map((key, index) => (
             <Button key={index} disabled={disabled}>
               {key.toString().toUpperCase()}
             </Button>
