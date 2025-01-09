@@ -1,30 +1,26 @@
-import { assign, setup } from 'xstate';
-import { GameContext, gameContextDefault, GameEvent } from '@/models';
+import { assign, PromiseActorLogic, setup } from 'xstate';
+import { DifficultyLevel, GameContext, gameContextDefault, GameEvent } from '@/models';
 import { noop } from '@zag-js/utils';
-import { gameInitializer } from './gameActors';
 
 export const gameStateMachine = setup({
   types: {
     context: {} as GameContext,
     events: {} as GameEvent,
   },
+  actors: {
+    gameInitActor: {} as PromiseActorLogic<GameContext>,
+    gameSequenceGenerationActor: {} as PromiseActorLogic<GameContext['sequence'], DifficultyLevel>,
+  },
   actions: {
-    generateSequence: function ({ context, event }) {
-      // Add your guard condition here
-      // assign({
-      //   aaaa: 'bbbb',
-      // });
-    },
     incrementRound: noop,
     handleInput: noop,
   },
-  actors: { gameInitializer },
   guards: {
-    isInputCorrect: function ({ context, event }) {
+    isInputCorrect: function () {
       // Add your guard condition here
       return true;
     },
-    isFinalRound: function ({ context, event }) {
+    isFinalRound: function () {
       // Add your guard condition here
       return true;
     },
@@ -36,14 +32,13 @@ export const gameStateMachine = setup({
   states: {
     initializing: {
       invoke: {
-        src: 'gameInitializer',
+        id: 'gameInitActor',
+        src: 'gameInitActor',
         onDone: {
           target: 'waitingForRoundStart',
-          actions: assign({
-            currentLevel: ({ event: { output } }) => output.currentLevel,
-            currentRound: ({ event: { output } }) => output.currentRound,
-            sequence: ({ event: { output } }) => output.sequence,
-          }),
+          actions: assign(({ event }) => ({
+            currentLevel: event.output.currentLevel,
+          })),
         },
         onError: {
           target: 'waitingForRoundStart',
@@ -54,6 +49,11 @@ export const gameStateMachine = setup({
     },
     waitingForRoundStart: {
       on: {
+        setLevel: {
+          actions: assign(({ event }) => ({
+            currentLevel: event.params.level,
+          })),
+        },
         startRound: {
           target: 'generatingSequence',
         },
@@ -61,11 +61,19 @@ export const gameStateMachine = setup({
       description: 'This state waits for the user to start the next round.',
     },
     generatingSequence: {
-      always: {
-        target: 'playingRound',
-      },
-      entry: {
-        type: 'generateSequence',
+      invoke: {
+        id: 'gameSequenceGenerationActor',
+        src: 'gameSequenceGenerationActor',
+        input: ({ context }) => context.currentLevel,
+        onDone: {
+          target: 'playingRound',
+          actions: assign(({ event }) => ({
+            sequence: event.output.concat(),
+          })),
+        },
+        onError: {
+          target: 'initializing',
+        },
       },
       description: 'This state generates a new sequence based on the current round and level.',
     },

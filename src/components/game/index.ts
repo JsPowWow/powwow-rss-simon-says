@@ -1,3 +1,3 @@
 export * from './parts/DifficultyLevelSelector';
-export * from './parts/VirtualKeyboard';
+export * from './parts/KeyboardInput';
 export * from './scene/GameScene';

@@ -1,7 +1,7 @@
 'use client';
 import type { Assign } from '@ark-ui/react';
 import { RadioGroup } from '@ark-ui/react/radio-group';
-import { type RadioButtonGroupVariantProps, radioButtonGroup } from '@/styled-system/recipes';
+import { radioButtonGroup, type RadioButtonGroupVariantProps } from '@/styled-system/recipes';
 import type { HTMLStyledProps } from '@/styled-system/types';
 import { createStyleContext } from './utils/create-style-context';
 

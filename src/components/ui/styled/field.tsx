@@ -2,7 +2,7 @@
 import type { Assign } from '@ark-ui/react';
 import { Field } from '@ark-ui/react/field';
 import { styled } from '@/styled-system/jsx';
-import { type FieldVariantProps, field, input, textarea } from '@/styled-system/recipes';
+import { field, type FieldVariantProps, input, textarea } from '@/styled-system/recipes';
 import type { ComponentProps, HTMLStyledProps } from '@/styled-system/types';
 import { createStyleContext } from './utils/create-style-context';
 

@@ -1,7 +1,7 @@
 import { DifficultyLevel } from '@/models';
 
 export type GameContext = {
-  sequence: unknown[];
+  sequence: string[];
   userInput?: unknown[];
   currentLevel: DifficultyLevel;
   currentRound: number;
@@ -10,6 +10,6 @@ export type GameContext = {
 export const gameContextDefault: GameContext = Object.freeze({
   sequence: [],
   userInput: [],
-  currentLevel: 'Medium',
+  currentLevel: DifficultyLevel.Easy,
   currentRound: 0,
 });

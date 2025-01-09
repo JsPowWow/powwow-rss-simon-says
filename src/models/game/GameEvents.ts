@@ -1,5 +1,7 @@
+import { DifficultyLevel } from '@/models';
+
 export type GameEvent =
-  | { type: 'ready' }
+  | { type: 'setLevel'; params: { level: DifficultyLevel } }
   | { type: 'startRound' }
   | { type: 'inputSymbol' }
   | { type: 'completeInput' }
