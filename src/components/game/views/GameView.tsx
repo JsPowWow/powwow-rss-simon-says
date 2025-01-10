@@ -5,19 +5,36 @@ import { KeyboardInput } from '../parts/KeyboardInput';
 import { DifficultyLevelSelector } from '../parts/DifficultyLevelSelector';
 import { HStack, VStack } from '@/styled-system/jsx';
 import { Text } from '@/components/ui/text';
-import { GameDifficulty } from '@/models';
+import { GameContext, GameDifficulty } from '@/models';
 import { Badge } from '@/components/ui/badge';
 import { match } from 'ts-pattern';
 import { GameStateContext } from '../GameStateContext';
 import { identity } from '@/shared/utils';
+import { useEffect, useState } from 'react';
 
 export const GameView = () => {
   const game = GameStateContext.useActorRef();
   const state = GameStateContext.useSelector(identity);
 
+  const [symbols, setSymbols] = useState<GameContext['sequence']>([]);
+
+  useEffect(() => {
+    const subscription = game.on('simulateTypeSymbol', (event) => {
+      setSymbols((prev) => [...prev, event.symbol]);
+    });
+    return subscription.unsubscribe;
+  }, [game, state]);
+
+  useEffect(() => {
+    const subscription = game.on('simulateTypeSymbolDone', (_event) => {
+      setSymbols([]);
+    });
+    return subscription.unsubscribe;
+  }, [game, state]);
+
   return (
     <VStack flexWrap='wrap'>
-      <Text>{state.value}</Text>
+      <Text>{`${state.value} ${symbols.join()}`}</Text>
       {match(state.value)
         .with('playingRound', () => {
           return (
@@ -30,11 +47,9 @@ export const GameView = () => {
                 <Button
                   variant='solid'
                   size='md'
-                  // loading={state.matches('initializing')}
-                  // disabled={!state.matches('waitingForRoundStart')}
+                  disabled={!state.can({ type: 'repeatSequence' })}
                   onClick={() => game.send({ type: 'repeatSequence' })}
                   // TODO AR :
-                  //  - The user can click the “Repeat the sequence” button only once per round.
                   //  - After that, the “Repeat the sequence” button becomes disabled until the next round (if the user successfully completes the current round).
                 >
                   Repeat the sequence

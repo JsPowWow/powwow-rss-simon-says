@@ -1,10 +1,11 @@
-import { AnyActorLogic, assign, PromiseActorLogic, setup } from 'xstate';
+import { AnyActorLogic, assign, emit, PromiseActorLogic, setup } from 'xstate';
 import { DifficultyLevel, GameContext, gameContextDefault, generateSymbolsSequence } from '@/models';
 import { noop } from '@/shared/utils';
 
 export const gameStateMachine = setup({
   types: {
     context: {} as GameContext,
+    emitted: {} as { type: 'simulateTypeSymbol'; symbol: string } | { type: 'simulateTypeSymbolDone' },
     events: {} as
       | { type: 'updateLevel'; params: { level: DifficultyLevel } }
       | { type: 'newGame' }
@@ -27,6 +28,7 @@ export const gameStateMachine = setup({
     handleInput: noop,
   },
   guards: {
+    hasRepeatAttempts: ({ context }) => !!context.repeatAttempts,
     isInputCorrect: function () {
       // Add your guard condition here
       return true;
@@ -62,6 +64,9 @@ export const gameStateMachine = setup({
       description: 'This state initializes the game, setting the current round and level.',
     },
     waitingForRoundStart: {
+      entry: assign(() => ({
+        repeatAttempts: gameContextDefault.repeatAttempts,
+      })),
       on: {
         updateLevel: {
           actions: assign(({ event }) => ({
@@ -89,6 +94,7 @@ export const gameStateMachine = setup({
           })),
         },
         onError: {
+          // fallback
           target: 'typingSimulation',
           actions: assign(({ context }) => ({
             sequence: generateSymbolsSequence({ level: context.currentLevel, round: context.currentRound }),
@@ -106,7 +112,18 @@ export const gameStateMachine = setup({
           characters: context.sequence.concat(),
           delay: 700,
         }),
-        onDone: { target: 'playingRound' },
+        onSnapshot: {
+          actions: emit(({ event, context }) => ({
+            type: 'simulateTypeSymbol',
+            symbol: context.sequence[event.snapshot.context.currentIndex - 1],
+          })),
+        },
+        onDone: {
+          target: 'playingRound',
+          actions: emit(() => ({
+            type: 'simulateTypeSymbolDone',
+          })),
+        },
         onError: { target: 'playingRound' },
       },
       tags: ['processing'],
@@ -119,6 +136,10 @@ export const gameStateMachine = setup({
         },
         repeatSequence: {
           target: 'typingSimulation',
+          guard: 'hasRepeatAttempts',
+          actions: assign(({ context }) => ({
+            repeatAttempts: context.repeatAttempts - 1,
+          })),
         },
         inputSymbol: {
           actions: {

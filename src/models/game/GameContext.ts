@@ -5,7 +5,7 @@ export type GameContext = {
   userInput?: unknown[];
   currentLevel: DifficultyLevel;
   currentRound: 1 | 2 | 3 | 4 | 5;
-  lives: number;
+  repeatAttempts: number;
 };
 
 export const gameContextDefault: GameContext = Object.freeze({
@@ -13,5 +13,5 @@ export const gameContextDefault: GameContext = Object.freeze({
   userInput: [],
   currentLevel: DifficultyLevel.Easy,
   currentRound: 1,
-  lives: 1,
+  repeatAttempts: 1,
 });

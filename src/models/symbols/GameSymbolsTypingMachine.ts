@@ -1,4 +1,4 @@
-import { not, raise, setup } from 'xstate';
+import { assign, not, raise, setup } from 'xstate';
 
 export type SymbolsTypingContext = {
   delay: number;
@@ -13,10 +13,8 @@ export const gameSymbolsTypingMachine = setup({
     events: {} as { type: 'press' },
   },
   actions: {
-    goNext: ({ context }) => {
-      context.currentIndex++;
-    },
     logCurrentSymbol: ({ context, event, self }) => {
+      // emit({ type: 'notification', currentChar: context.characters[context.currentIndex] });
       // TODO AR del this
       console.log({
         self,
@@ -52,7 +50,13 @@ export const gameSymbolsTypingMachine = setup({
           },
         ],
       },
-      entry: ['logCurrentSymbol', 'goNext', raise({ type: 'press' }, { delay: 1000 })],
+      entry: [
+        'logCurrentSymbol',
+        assign(({ context }) => ({
+          currentIndex: context.currentIndex + 1,
+        })),
+        raise({ type: 'press' }, { delay: 1000 }),
+      ],
       description:
         'Simulates typing of characters from the input array. It processes one character at a time with a delay, and goes to the next character until the end of the array is reached.',
     },
