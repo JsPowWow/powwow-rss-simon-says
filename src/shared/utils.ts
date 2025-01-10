@@ -31,3 +31,5 @@ export function getRandomItem<T>(items: Array<T>): T {
 export const noop = (..._: unknown[]): void => {
   /** This is intentional */
 };
+
+export const identity = <T>(source: T): T => source;

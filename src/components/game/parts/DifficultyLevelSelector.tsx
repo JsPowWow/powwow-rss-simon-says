@@ -1,7 +1,7 @@
 import { RadioButtonGroup } from '@/components/ui/radio-button-group';
-import { GameDifficulty, DifficultyLevel, gameDifficultyLevels } from '@/models';
+import { DifficultyLevel, GameDifficulty, gameDifficultyLevels } from '@/models';
 import { match } from 'ts-pattern';
-import { noop } from '@zag-js/utils';
+import { noop } from '@/shared/utils';
 
 const options = gameDifficultyLevels.map((option) => ({
   value: option,
@@ -11,7 +11,7 @@ const options = gameDifficultyLevels.map((option) => ({
 interface DifficultyLevelSelectorProps {
   currentLevel: DifficultyLevel;
   disabled?: boolean;
-  reandonly?: boolean;
+  readonly?: boolean;
   onSelect?: (difficultyLevel: DifficultyLevel) => void;
 }
 

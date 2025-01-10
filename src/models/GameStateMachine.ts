@@ -1,15 +1,26 @@
-import { assign, PromiseActorLogic, setup } from 'xstate';
-import { DifficultyLevel, GameContext, gameContextDefault, GameEvent } from '@/models';
-import { noop } from '@zag-js/utils';
+import { AnyActorLogic, assign, PromiseActorLogic, setup } from 'xstate';
+import { DifficultyLevel, GameContext, gameContextDefault, generateSymbolsSequence } from '@/models';
+import { noop } from '@/shared/utils';
 
 export const gameStateMachine = setup({
   types: {
     context: {} as GameContext,
-    events: {} as GameEvent,
+    events: {} as
+      | { type: 'updateLevel'; params: { level: DifficultyLevel } }
+      | { type: 'newGame' }
+      | { type: 'startRound' }
+      | { type: 'repeatSequence' }
+      | { type: 'inputSymbol' }
+      | { type: 'completeInput' }
+      | { type: 'retryRound' },
   },
   actors: {
     gameInitActor: {} as PromiseActorLogic<GameContext>,
-    gameSequenceGenerationActor: {} as PromiseActorLogic<GameContext['sequence'], DifficultyLevel>,
+    gameSequenceGenerationActor: {} as PromiseActorLogic<
+      GameContext['sequence'],
+      { level: DifficultyLevel; round: number }
+    >,
+    gameSymbolsTypingActor: {} as AnyActorLogic,
   },
   actions: {
     incrementRound: noop,
@@ -24,6 +35,9 @@ export const gameStateMachine = setup({
       // Add your guard condition here
       return true;
     },
+  },
+  delays: {
+    symbolTypingDelay: 1000,
   },
 }).createMachine({
   id: 'simonSaysStateMachine',
@@ -42,14 +56,14 @@ export const gameStateMachine = setup({
         },
         onError: {
           target: 'waitingForRoundStart',
-          actions: assign(gameContextDefault),
         },
       },
+      tags: ['processing'],
       description: 'This state initializes the game, setting the current round and level.',
     },
     waitingForRoundStart: {
       on: {
-        setLevel: {
+        updateLevel: {
           actions: assign(({ event }) => ({
             currentLevel: event.params.level,
           })),
@@ -64,21 +78,48 @@ export const gameStateMachine = setup({
       invoke: {
         id: 'gameSequenceGenerationActor',
         src: 'gameSequenceGenerationActor',
-        input: ({ context }) => context.currentLevel,
+        input: ({ context }) => ({
+          level: context.currentLevel,
+          round: context.currentRound,
+        }),
         onDone: {
-          target: 'playingRound',
+          target: 'typingSimulation',
           actions: assign(({ event }) => ({
             sequence: event.output.concat(),
           })),
         },
         onError: {
-          target: 'initializing',
+          target: 'typingSimulation',
+          actions: assign(({ context }) => ({
+            sequence: generateSymbolsSequence({ level: context.currentLevel, round: context.currentRound }),
+          })),
         },
       },
+      tags: ['processing'],
       description: 'This state generates a new sequence based on the current round and level.',
+    },
+    typingSimulation: {
+      invoke: {
+        id: 'gameSymbolsTypingActor',
+        src: 'gameSymbolsTypingActor',
+        input: ({ context }: { context: GameContext }) => ({
+          characters: context.sequence.concat(),
+          delay: 700,
+        }),
+        onDone: { target: 'playingRound' },
+        onError: { target: 'playingRound' },
+      },
+      tags: ['processing'],
+      description: 'This state display to the user generated sequence using the keyboard or virtual keys.',
     },
     playingRound: {
       on: {
+        newGame: {
+          target: 'waitingForRoundStart',
+        },
+        repeatSequence: {
+          target: 'typingSimulation',
+        },
         inputSymbol: {
           actions: {
             type: 'handleInput',
@@ -120,8 +161,8 @@ export const gameStateMachine = setup({
         retryRound: {
           target: 'playingRound',
         },
-        resetGame: {
-          target: 'initializing',
+        newGame: {
+          target: 'waitingForRoundStart',
         },
       },
       description: 'This state is reached when the user fails to repeat the sequence correctly.',

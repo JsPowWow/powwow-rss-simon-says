@@ -1,32 +1,19 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { DifficultyLevelSelector, KeyboardInput } from '@/components/game';
+import { KeyboardInput } from '../parts/KeyboardInput';
+import { DifficultyLevelSelector } from '../parts/DifficultyLevelSelector';
 import { HStack, VStack } from '@/styled-system/jsx';
-import { useMachine } from '@xstate/react';
-import { createBrowserInspector } from '@statelyai/inspect';
 import { Text } from '@/components/ui/text';
-import { fromPromise } from 'xstate';
-import { GameDifficulty, gameStateMachine, generateSequence, initializeGame } from '@/models';
+import { GameDifficulty } from '@/models';
 import { Badge } from '@/components/ui/badge';
 import { match } from 'ts-pattern';
-import { Fragment } from 'react';
+import { GameStateContext } from '../GameStateContext';
+import { identity } from '@/shared/utils';
 
-const { inspect } = createBrowserInspector({
-  // TODO AR Comment out the line below to start the inspector
-  // autoStart: false,
-});
-
-export const GameScene = () => {
-  const [state, send] = useMachine(
-    gameStateMachine.provide({
-      actors: {
-        gameInitActor: fromPromise(initializeGame),
-        gameSequenceGenerationActor: fromPromise(generateSequence),
-      },
-    }),
-    { inspect }
-  );
+export const GameView = () => {
+  const game = GameStateContext.useActorRef();
+  const state = GameStateContext.useSelector(identity);
 
   return (
     <VStack flexWrap='wrap'>
@@ -34,45 +21,47 @@ export const GameScene = () => {
       {match(state.value)
         .with('playingRound', () => {
           return (
-            <Fragment>
-              <Badge size='lg'>{`Level: ${state.context.currentLevel}, Round: ${state.context.currentRound}`}</Badge>
+            <VStack minH='28' justifyContent='end'>
+              <Badge
+                variant='solid'
+                size='lg'
+              >{`Level: ${state.context.currentLevel}, Round: ${state.context.currentRound}`}</Badge>
               <HStack>
                 <Button
                   variant='solid'
-                  size='lg'
+                  size='md'
                   // loading={state.matches('initializing')}
                   // disabled={!state.matches('waitingForRoundStart')}
-                  // onClick={() => send({ type: 'startRound' })}
+                  onClick={() => game.send({ type: 'repeatSequence' })}
+                  // TODO AR :
+                  //  - The user can click the “Repeat the sequence” button only once per round.
+                  //  - After that, the “Repeat the sequence” button becomes disabled until the next round (if the user successfully completes the current round).
                 >
                   Repeat the sequence
                 </Button>
                 <Button
                   variant='solid'
-                  size='lg'
-                  // loading={state.matches('initializing')}
+                  size='md'
                   disabled={state.matches('typingSimulation')}
-                  // onClick={() => send({ type: 'startRound' })}
+                  onClick={() => game.send({ type: 'newGame' })}
                 >
                   New Game
                 </Button>
               </HStack>
-            </Fragment>
+            </VStack>
           );
         })
         .otherwise(() => (
-          <Fragment>
+          <VStack minH='28' justifyContent='end'>
             <Button
               variant='solid'
               size='lg'
-              loading={state.matches('initializing')}
+              loading={state.hasTag('processing')}
               disabled={!state.matches('waitingForRoundStart')}
-              onClick={() => send({ type: 'startRound' })}
+              onClick={() => game.send({ type: 'startRound' })}
               // TODO AR :
               //  - Only after clicking the “Start” button is the first sequence shown by simulating the typing of the corresponding symbols on the virtual keyboard.
               //  - The typing simulation should be clear: the symbols are “typed” one after another, and the corresponding keys are highlighted.
-              // TODO AR :
-              //  - The user can click the “Repeat the sequence” button only once per round.
-              //  - After that, the “Repeat the sequence” button becomes disabled until the next round (if the user successfully completes the current round).
             >
               Start
             </Button>
@@ -80,10 +69,10 @@ export const GameScene = () => {
               disabled={state.matches('playingRound')}
               currentLevel={state.context.currentLevel}
               onSelect={(difficultyLevel) => {
-                send({ type: 'setLevel', params: { level: difficultyLevel } });
+                game.send({ type: 'updateLevel', params: { level: difficultyLevel } });
               }}
             />
-          </Fragment>
+          </VStack>
         ))}
 
       <KeyboardInput
