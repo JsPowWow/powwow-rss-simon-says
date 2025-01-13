@@ -78,7 +78,7 @@ export const GameView = () => {
               </VStack>
             );
           })
-          .with(P.union('playingRound', 'roundFailure'), () => {
+          .with(P.union('playingRound'), () => {
             return (
               <VStack>
                 <HStack>
@@ -113,6 +113,34 @@ export const GameView = () => {
                     Next Round
                   </Button>
                   <Button variant='solid' size='md' onClick={() => game.send({ type: 'newGame' })}>
+                    New Game
+                  </Button>
+                  <Badge minW='50' variant='solid' size='xl'>{`Level: ${state.context.currentLevel}`}</Badge>
+                  <Badge minW='50' variant='solid' size='xl'>{`Round: ${state.context.currentRound}`}</Badge>
+                </HStack>
+                <Input readOnly value={state.context.inputSequence} />
+              </VStack>
+            );
+          })
+          .with('roundFailure', () => {
+            return (
+              <VStack>
+                <Text>GAME OVER</Text>
+                <HStack>
+                  <Button
+                    variant='solid'
+                    size='md'
+                    disabled={!state.can({ type: 'repeatSequence' })}
+                    onClick={() => game.send({ type: 'repeatSequence' })}
+                  >
+                    Repeat Round
+                  </Button>
+                  <Button
+                    variant='solid'
+                    size='md'
+                    disabled={state.matches('typingSimulation')}
+                    onClick={() => game.send({ type: 'newGame' })}
+                  >
                     New Game
                   </Button>
                   <Badge minW='50' variant='solid' size='xl'>{`Level: ${state.context.currentLevel}`}</Badge>
