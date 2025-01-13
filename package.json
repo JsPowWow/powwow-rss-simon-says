@@ -1,7 +1,7 @@
 {
   "name": "rss-simon-says",
   "version": "0.1.0",
-  "private": true,
+  "private": false,
   "scripts": {
     "dev": "next dev --turbopack",
     "prepare": "panda codegen",
