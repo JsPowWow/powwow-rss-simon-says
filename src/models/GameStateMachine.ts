@@ -1,4 +1,4 @@
-import { and, AnyActorLogic, assign, emit, PromiseActorLogic, setup } from 'xstate';
+import { and, AnyActorLogic, assertEvent, assign, emit, not, PromiseActorLogic, setup } from 'xstate';
 import {
   DifficultyLevel,
   GameContext,
@@ -6,7 +6,6 @@ import {
   generateSymbolsSequence,
   SymbolsTypingContext,
 } from '@/models';
-import { noop } from '@/shared/utils';
 
 export const gameStateMachine = setup({
   types: {
@@ -18,9 +17,7 @@ export const gameStateMachine = setup({
       | { type: 'startRound' }
       | { type: 'onSymbolTypeSimulate'; character: string }
       | { type: 'repeatSequence' }
-      | { type: 'inputSymbol'; params: { symbol: string } }
-      | { type: 'completeInput' }
-      | { type: 'retryRound' },
+      | { type: 'inputSymbol'; params: { character: string } },
   },
   actors: {
     gameInitActor: {} as PromiseActorLogic<GameContext>,
@@ -31,23 +28,47 @@ export const gameStateMachine = setup({
     gameSymbolsTypingActor: {} as AnyActorLogic,
   },
   actions: {
-    incrementRound: noop,
-    handleInput: noop,
+    initializeGame: assign(() => ({
+      repeatAttempts: gameContextDefault.repeatAttempts,
+      currentRound: 1,
+    })),
+    generateSequence: assign(({ context: { currentLevel, currentRound } }) => ({
+      sequence: generateSymbolsSequence({ level: currentLevel, round: currentRound }),
+    })),
+    initializeNextRound: assign(({ context: { currentRound } }) => ({
+      repeatAttempts: gameContextDefault.repeatAttempts,
+      currentRound: ++currentRound,
+    })),
+    updateDifficultyLevel: assign(({ event }) => {
+      assertEvent(event, 'updateLevel');
+      return {
+        currentLevel: event.params.level,
+      };
+    }),
+    decreaseRepeatAttempts: assign(({ context: { repeatAttempts } }) => ({
+      repeatAttempts: repeatAttempts - 1,
+    })),
+    resetInputSequence: assign(() => ({
+      inputSequence: [],
+    })),
+    appendInputSequence: assign(({ context, event }) => {
+      assertEvent(event, 'inputSymbol');
+      return {
+        inputSequence: context.inputSequence.concat(event.params.character),
+      };
+    }),
   },
   guards: {
-    hasRepeatAttempts: ({ context }) => !!context.repeatAttempts,
-    isInputCorrect: function () {
-      // Add your guard condition here
-      return true;
+    hasRepeatAttempts: ({ context: { repeatAttempts } }) => !!repeatAttempts,
+    isValidInputCharacter: ({ context: { sequence, inputSequence }, event }) => {
+      assertEvent(event, 'inputSymbol');
+      return sequence.join('').startsWith([...inputSequence, event.params.character].join(''));
     },
-    hasNoError: ({ context }) => Boolean(context.allowedErrorsCount),
-    isFinalRound: function () {
-      // Add your guard condition here
-      return true;
+    isInputComplete: ({ context: { sequence, inputSequence }, event }) => {
+      assertEvent(event, 'inputSymbol');
+      return sequence.join('') === [...inputSequence, event.params.character].join('');
     },
-  },
-  delays: {
-    symbolTypingDelay: 1000,
+    isFinalRound: ({ context: { currentRound } }) => currentRound >= 5,
   },
 }).createMachine({
   id: 'simonSaysStateMachine',
@@ -59,31 +80,21 @@ export const gameStateMachine = setup({
         id: 'gameInitActor',
         src: 'gameInitActor',
         onDone: {
-          target: 'waitingForRoundStart',
-          actions: assign(({ event }) => ({
-            currentLevel: event.output.currentLevel,
+          target: 'waitingForGameStart',
+          actions: assign(({ event: { output } }) => ({
+            currentLevel: output.currentLevel,
           })),
         },
-        onError: {
-          target: 'waitingForRoundStart',
-        },
+        onError: { target: 'waitingForGameStart' },
       },
       tags: ['processing'],
       description: 'This state initializes the game, setting the current round and level.',
     },
-    waitingForRoundStart: {
-      entry: assign(() => ({
-        repeatAttempts: gameContextDefault.repeatAttempts,
-      })),
+    waitingForGameStart: {
+      entry: 'initializeGame',
       on: {
-        updateLevel: {
-          actions: assign(({ event }) => ({
-            currentLevel: event.params.level,
-          })),
-        },
-        startRound: {
-          target: 'generatingSequence',
-        },
+        updateLevel: { actions: 'updateDifficultyLevel' },
+        startRound: { target: 'generatingSequence' },
       },
       description: 'This state waits for the user to start the next round.',
     },
@@ -91,22 +102,20 @@ export const gameStateMachine = setup({
       invoke: {
         id: 'gameSequenceGenerationActor',
         src: 'gameSequenceGenerationActor',
-        input: ({ context }) => ({
-          level: context.currentLevel,
-          round: context.currentRound,
+        input: ({ context: { currentLevel, currentRound } }) => ({
+          level: currentLevel,
+          round: currentRound,
         }),
         onDone: {
           target: 'typingSimulation',
-          actions: assign(({ event }) => ({
-            sequence: event.output.concat(),
+          actions: assign(({ event: { output } }) => ({
+            sequence: output.concat(),
           })),
         },
         onError: {
           // fallback
           target: 'typingSimulation',
-          actions: assign(({ context }) => ({
-            sequence: generateSymbolsSequence({ level: context.currentLevel, round: context.currentRound }),
-          })),
+          actions: 'generateSequence',
         },
       },
       tags: ['processing'],
@@ -120,10 +129,10 @@ export const gameStateMachine = setup({
           sequence: sequence.concat(),
         }),
         onDone: {
-          target: 'playingRound',
           actions: emit(() => ({
             type: 'simulateTypeSymbolDone',
           })),
+          target: 'playingRound',
         },
         onError: { target: 'playingRound' },
       },
@@ -131,9 +140,9 @@ export const gameStateMachine = setup({
         onSymbolTypeSimulate: {
           reenter: true,
           actions: [
-            emit(({ event }) => ({
+            emit(({ event: { character } }) => ({
               type: 'simulateTypeSymbol',
-              symbol: event.character,
+              symbol: character,
             })),
           ],
         },
@@ -142,37 +151,27 @@ export const gameStateMachine = setup({
       description: 'This state display to the user generated sequence using the keyboard or virtual keys.',
     },
     playingRound: {
-      entry: assign(() => ({
-        inputSequence: [],
-      })),
+      entry: 'resetInputSequence',
       on: {
-        newGame: {
-          target: 'waitingForRoundStart',
-        },
+        newGame: { target: 'waitingForGameStart' },
         repeatSequence: {
-          target: 'typingSimulation',
           guard: 'hasRepeatAttempts',
-          actions: assign(({ context }) => ({
-            repeatAttempts: context.repeatAttempts - 1,
-          })),
+          target: 'typingSimulation',
+          actions: 'decreaseRepeatAttempts',
         },
-        inputSymbol: {
-          guard: and(['hasNoError']),
-          actions: [
-            assign(({ context, event }) => ({
-              inputSequence: context.inputSequence.concat(event.params.symbol),
-            })),
-          ],
-        },
-        completeInput: [
+        inputSymbol: [
           {
-            target: 'roundSuccess',
-            guard: {
-              type: 'isInputCorrect',
-            },
+            guard: and(['isValidInputCharacter', not('isInputComplete')]),
+            actions: 'appendInputSequence',
           },
           {
+            guard: not('isValidInputCharacter'),
             target: 'roundFailure',
+          },
+          {
+            guard: 'isInputComplete',
+            target: 'roundSuccess',
+            actions: 'appendInputSequence',
           },
         ],
       },
@@ -184,22 +183,25 @@ export const gameStateMachine = setup({
           target: 'gameComplete',
           guard: 'isFinalRound',
         },
-        {
-          target: 'waitingForRoundStart',
-        },
       ],
-      entry: {
-        type: 'incrementRound',
+      on: {
+        newGame: { target: 'waitingForGameStart' },
+        startRound: {
+          target: 'generatingSequence',
+          actions: 'initializeNextRound',
+        },
       },
       description: 'This state is reached when the user successfully repeats the sequence.',
     },
     roundFailure: {
       on: {
-        retryRound: {
-          target: 'playingRound',
+        repeatSequence: {
+          guard: 'hasRepeatAttempts',
+          target: 'typingSimulation',
+          actions: 'decreaseRepeatAttempts',
         },
         newGame: {
-          target: 'waitingForRoundStart',
+          target: 'waitingForGameStart',
         },
       },
       description: 'This state is reached when the user fails to repeat the sequence correctly.',
