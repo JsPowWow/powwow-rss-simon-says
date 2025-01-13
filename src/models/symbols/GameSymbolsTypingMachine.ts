@@ -1,36 +1,18 @@
-import { assign, not, raise, setup } from 'xstate';
-
-export type SymbolsTypingContext = {
-  delay: number;
-  characters: string[];
-  currentIndex: number;
-};
+import { assign, not, raise, sendParent, setup } from 'xstate';
+import { SymbolsTypingContext } from '@/models';
 
 export const gameSymbolsTypingMachine = setup({
   types: {
-    input: {} as Pick<SymbolsTypingContext, 'characters' | 'delay'>,
+    input: {} as Pick<SymbolsTypingContext, 'sequence'>,
     context: {} as SymbolsTypingContext,
     events: {} as { type: 'press' },
   },
-  actions: {
-    logCurrentSymbol: ({ context, event, self }) => {
-      // emit({ type: 'notification', currentChar: context.characters[context.currentIndex] });
-      // TODO AR del this
-      console.log({
-        self,
-        event: event.type,
-        currentChar: context.characters[context.currentIndex],
-      });
-    },
-  },
   guards: {
-    hasNext: ({ context }: { context: SymbolsTypingContext }) =>
-      Boolean(context.characters.length && context.currentIndex < context.characters.length),
+    hasNext: ({ context: { sequence, currentIndex } }) => Boolean(sequence.length && currentIndex < sequence.length),
   },
 }).createMachine({
-  context: ({ input }) => ({
-    characters: input.characters,
-    delay: input.delay,
+  context: ({ input: { sequence } }) => ({
+    sequence,
     currentIndex: 0,
   }),
   id: 'typingMachine',
@@ -40,20 +22,23 @@ export const gameSymbolsTypingMachine = setup({
       on: {
         press: [
           {
+            guard: 'hasNext',
             reenter: true,
             target: 'typing',
-            guard: 'hasNext',
           },
           {
-            target: 'completed',
             guard: not('hasNext'),
+            target: 'completed',
           },
         ],
       },
       entry: [
-        'logCurrentSymbol',
-        assign(({ context }) => ({
-          currentIndex: context.currentIndex + 1,
+        sendParent(({ context: { sequence, currentIndex } }) => ({
+          type: 'onSymbolTypeSimulate',
+          character: sequence[currentIndex],
+        })),
+        assign(({ context: { currentIndex } }) => ({
+          currentIndex: ++currentIndex,
         })),
         raise({ type: 'press' }, { delay: 1000 }),
       ],

@@ -20,6 +20,7 @@ export const GameView = () => {
 
   useEffect(() => {
     const subscription = game.on('simulateTypeSymbol', (event) => {
+      console.log('simulateTypeSymbol', event);
       setSymbols((prev) => [...prev, event.symbol]);
     });
     return subscription.unsubscribe;
@@ -42,7 +43,7 @@ export const GameView = () => {
               <Badge
                 variant='solid'
                 size='lg'
-              >{`Level: ${state.context.currentLevel}, Round: ${state.context.currentRound}`}</Badge>
+              >{`Level: ${state.context.currentLevel}, Round: ${state.context.currentRound}, Input: ${state.context.inputSequence} `}</Badge>
               <HStack>
                 <Button
                   variant='solid'
@@ -93,7 +94,12 @@ export const GameView = () => {
       <KeyboardInput
         showNumbers={GameDifficulty.usingNumbers(state.context.currentLevel)}
         showLetters={GameDifficulty.usingLetters(state.context.currentLevel)}
+        highlight={symbols}
         disabled={!state.matches('playingRound')}
+        onKey={(key) => {
+          console.log('~~ key', key);
+          game.send({ type: 'inputSymbol', params: { symbol: key } });
+        }}
       />
     </VStack>
   );

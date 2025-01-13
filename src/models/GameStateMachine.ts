@@ -1,5 +1,11 @@
-import { AnyActorLogic, assign, emit, PromiseActorLogic, setup } from 'xstate';
-import { DifficultyLevel, GameContext, gameContextDefault, generateSymbolsSequence } from '@/models';
+import { and, AnyActorLogic, assign, emit, PromiseActorLogic, setup } from 'xstate';
+import {
+  DifficultyLevel,
+  GameContext,
+  gameContextDefault,
+  generateSymbolsSequence,
+  SymbolsTypingContext,
+} from '@/models';
 import { noop } from '@/shared/utils';
 
 export const gameStateMachine = setup({
@@ -10,8 +16,9 @@ export const gameStateMachine = setup({
       | { type: 'updateLevel'; params: { level: DifficultyLevel } }
       | { type: 'newGame' }
       | { type: 'startRound' }
+      | { type: 'onSymbolTypeSimulate'; character: string }
       | { type: 'repeatSequence' }
-      | { type: 'inputSymbol' }
+      | { type: 'inputSymbol'; params: { symbol: string } }
       | { type: 'completeInput' }
       | { type: 'retryRound' },
   },
@@ -33,6 +40,7 @@ export const gameStateMachine = setup({
       // Add your guard condition here
       return true;
     },
+    hasNoError: ({ context }) => Boolean(context.allowedErrorsCount),
     isFinalRound: function () {
       // Add your guard condition here
       return true;
@@ -108,16 +116,9 @@ export const gameStateMachine = setup({
       invoke: {
         id: 'gameSymbolsTypingActor',
         src: 'gameSymbolsTypingActor',
-        input: ({ context }: { context: GameContext }) => ({
-          characters: context.sequence.concat(),
-          delay: 700,
+        input: ({ context: { sequence } }: { context: SymbolsTypingContext }) => ({
+          sequence: sequence.concat(),
         }),
-        onSnapshot: {
-          actions: emit(({ event, context }) => ({
-            type: 'simulateTypeSymbol',
-            symbol: context.sequence[event.snapshot.context.currentIndex - 1],
-          })),
-        },
         onDone: {
           target: 'playingRound',
           actions: emit(() => ({
@@ -126,10 +127,24 @@ export const gameStateMachine = setup({
         },
         onError: { target: 'playingRound' },
       },
+      on: {
+        onSymbolTypeSimulate: {
+          reenter: true,
+          actions: [
+            emit(({ event }) => ({
+              type: 'simulateTypeSymbol',
+              symbol: event.character,
+            })),
+          ],
+        },
+      },
       tags: ['processing'],
       description: 'This state display to the user generated sequence using the keyboard or virtual keys.',
     },
     playingRound: {
+      entry: assign(() => ({
+        inputSequence: [],
+      })),
       on: {
         newGame: {
           target: 'waitingForRoundStart',
@@ -142,9 +157,12 @@ export const gameStateMachine = setup({
           })),
         },
         inputSymbol: {
-          actions: {
-            type: 'handleInput',
-          },
+          guard: and(['hasNoError']),
+          actions: [
+            assign(({ context, event }) => ({
+              inputSequence: context.inputSequence.concat(event.params.symbol),
+            })),
+          ],
         },
         completeInput: [
           {
@@ -164,9 +182,7 @@ export const gameStateMachine = setup({
       always: [
         {
           target: 'gameComplete',
-          guard: {
-            type: 'isFinalRound',
-          },
+          guard: 'isFinalRound',
         },
         {
           target: 'waitingForRoundStart',

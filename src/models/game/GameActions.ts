@@ -9,4 +9,4 @@ export const generateSequenceAsync = ({
   input,
 }: {
   input: { level: DifficultyLevel; round: number };
-}): Promise<GameContext['sequence']> => sleepFor(1400, input).then(generateSymbolsSequence);
+}): Promise<GameContext['sequence']> => sleepFor(600, input).then(generateSymbolsSequence);
