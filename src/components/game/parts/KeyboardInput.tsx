@@ -26,7 +26,12 @@ export const KeyboardInput = ({
       {showNumbers && (
         <HStack flexWrap='wrap' justifyContent='center'>
           {GameSymbols.numbers.map((key, index) => (
-            <Button key={index} disabled={disabled} onClick={() => handleOnClick(key)}>
+            <Button
+              background={highlight?.includes(key) ? 'colorPalette.a12' : 'colorPalette.default'}
+              key={index}
+              disabled={disabled}
+              onClick={() => handleOnClick(key)}
+            >
               {key}
             </Button>
           ))}

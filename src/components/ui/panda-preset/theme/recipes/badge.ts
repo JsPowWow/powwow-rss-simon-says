@@ -66,6 +66,16 @@ export const badge = defineRecipe({
           height: '4',
         },
       },
+      xl: {
+        textStyle: 'sm',
+        px: '3',
+        h: '9',
+        gap: '1.5',
+        '& svg': {
+          width: '4',
+          height: '6',
+        },
+      },
     },
   },
 });
